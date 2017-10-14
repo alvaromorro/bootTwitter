@@ -1,42 +1,23 @@
 #Clase para acceder a la API de twitter
-
-import base64
+# -*- coding: utf-8 -*-
 import requests
 import json
-
+import tweepy
+import pymongo
 from credenciales import *
+from pymongo import MongoClient
+
 
 class TwitterApi:
-    #Usamos las credenciales para crear las keys para poder autenticarnos
-    key_secret = '{}:{}'.format(consumer_key, consumer_secret).encode('ascii')
-    b64_encoded_key = base64.b64encode(key_secret)
-    b64_encoded_key = b64_encoded_key.decode('ascii')
 
-    auth_headers = {
-        'Authorization': 'Basic {}'.format(b64_encoded_key),
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-    }
+    retweeted = []
+    favorited = []
+    following = []
 
-    auth_data = {
-        'grant_type': 'client_credentials'
-    }
-
-
-    search_headers = {
-        'Authorization': 'Bearer {}'.format(access_token)
-    }
-
-    search_params_es = {
-        'q': 'sorteo%20clave%20steam%20RT',
-        'result_type': 'recent',
-        'count': 10
-    }
-
-    search_params_en = {
-        'q': 'giveaway%20key%20steam%20RT',
-        'result_type': 'recent',
-        'count': 10
-    }
+    requests.packages.urllib3.disable_warnings()
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_secret)
+    api = tweepy.API(auth)
 
     #La url base de la API de twitter
     base_url = 'https://api.twitter.com/'
@@ -44,10 +25,48 @@ class TwitterApi:
     auth_url = '{}oauth2/token'.format(base_url)
     search_url = '{}1.1/search/tweets.json'.format(base_url)
 
-    def autenticacion(self):
-        auth_resp = requests.post(auth_url, headers=auth_headers, data=auth_data)
-        return auth_resp.status_code
+    query_es = 'sorteo%20key%20steam%20RT'
+    query_en = 'giveaway%20key%20steam%20RT'
 
-    def search(self):
-        search_resp = requests.get(search_url, headers=search_headers, params=search_params_en)
-        return search_resp.json()
+    #Inicializar la base de datos
+    client = MongoClient()
+    client = MongoClient('localhost', 27017)
+
+    db = client.database
+    collection = db.test_collection
+    collection.insert_one({"texto":"hola"})
+
+    #Funciones para acceder a la API de Twitter y realizar operaciones
+    def search(self,numero_tweets):
+        resp = self.api.search(q=self.query_es, count = numero_tweets)
+        return resp
+
+    def retweet(self, tweet):
+        if tweet.id in self.retweeted == False:
+            #NO está en la lista
+            try:
+                self.api.retweet(tweet.id)
+                print 'rt'
+            except Exception, e:
+                print e
+                self.retweeted.append(tweet.id)
+
+    def follow(self,tweet):
+        if tweet.user.id in self.following == False:
+            try:
+                self.api.create_friendship(tweet.user.id)
+                print 'follow'
+            except Exception, e:
+                print e
+                self.following.append(tweet.user.id)
+        else: print 'no in list '
+
+    def fav(self,tweet):
+        if tweet.id in self.favorited:
+            #NO está en la lista
+            try:
+                self.api.retweet(tweet.id)
+                print 'fav'
+            except Exception, e:
+                print e
+                self.favorited.append(tweet.id)
