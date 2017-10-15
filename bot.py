@@ -8,11 +8,15 @@ api = TwitterApi()
 #Buscamos tweets por palabras clave y obtenemos el JSON con los datos de los tweets
 results = api.search(5)
 
+for t in results:
+    api.test(t)
+
 #Hacemos RT a los tweets
-for tweet in results:
-    try:
-        api.retweet(tweet)
-        api.fav(tweet)
-        api.follow(tweet)
-    except Exception, e:
-        print e
+def proceso(self):
+    for tweet in results:
+        try:
+            api.retweet(tweet)
+            api.fav(tweet)
+            api.follow(tweet)
+        except Exception, e:
+            print e

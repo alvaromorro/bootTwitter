@@ -10,10 +10,6 @@ from pymongo import MongoClient
 
 class TwitterApi:
 
-    retweeted = []
-    favorited = []
-    following = []
-
     requests.packages.urllib3.disable_warnings()
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_secret)
@@ -33,40 +29,58 @@ class TwitterApi:
     client = MongoClient('localhost', 27017)
 
     db = client.database
-    collection = db.test_collection
-    collection.insert_one({"texto":"hola"})
+    siguiendo= db.siguiendo
+    retwiteado = db.retwiteado
+    favoritos = db.favoritos
+
+    siguiendo.insert_one({"user_id": 0000})
+    retwiteado.insert_one({"tweet_id": 0000})
+    favoritos.insert_one({"tweet_id": 0000})
 
     #Funciones para acceder a la API de Twitter y realizar operaciones
     def search(self,numero_tweets):
-        resp = self.api.search(q=self.query_es, count = numero_tweets)
+        resp = self.api.search(q=self.query_en, count = numero_tweets)
         return resp
 
     def retweet(self, tweet):
-        if tweet.id in self.retweeted == False:
+        tweet_id = str(tweet.id)
+        if self.retwiteado.find_one({"tweet_id": tweet_id}) == None:
             #NO está en la lista
             try:
+                #Hacemos RT y añadimos el id del Tweet a la base de datos
                 self.api.retweet(tweet.id)
+                self.retwiteado.insert_one({"tweet_id": tweet_id})
                 print 'rt'
             except Exception, e:
                 print e
-                self.retweeted.append(tweet.id)
+                self.retwiteado.insert_one({"tweet_id": tweet_id})
+        else: print -1
 
     def follow(self,tweet):
-        if tweet.user.id in self.following == False:
+        user_id = str(tweet.user.id)
+        if self.siguiendo.find_one({"user_id": user_id}) == None:
             try:
                 self.api.create_friendship(tweet.user.id)
+                self.siguiendo.insert_one({"user_id": user_id})
                 print 'follow'
             except Exception, e:
                 print e
-                self.following.append(tweet.user.id)
-        else: print 'no in list '
+                self.siguiendo.insert_one({"user_id": user_id})
+        else: print -1
+
 
     def fav(self,tweet):
-        if tweet.id in self.favorited:
+        tweet_id = str(tweet.id)
+        if self.favoritos.find_one({"tweet_id": tweet_id}) == None:
             #NO está en la lista
             try:
-                self.api.retweet(tweet.id)
+                self.api.create_favorite(tweet.id)
+                self.favoritos.insert_one({"tweet_id": tweet_id})
                 print 'fav'
             except Exception, e:
                 print e
-                self.favorited.append(tweet.id)
+                self.favoritos.insert_one({"tweet_id": tweet_id})
+        else: print -1
+
+    def test(self,tweet):
+        print tweet.user_mentions
